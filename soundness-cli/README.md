@@ -22,6 +22,15 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 ```
 
+then choose ``1) Proceed with standard installation (default - just press enter)``
+
+Verify Rust installation:
+```
+rustc --version
+cargo --version
+```
+
+
 2. Clone the repository:
 ```
 git clone https://github.com/robynasuro/soundness-layer.git
