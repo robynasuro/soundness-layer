@@ -87,19 +87,25 @@ soundness-cli generate-key --name testkey
 
 If you have a 24-word BIP-39 mnemonic, import it:
 
-```soundness-cli import-phrase --phrase "your-phrase" --name your-key-name```
+```
+soundness-cli import-phrase --phrase "your-phrase" --name your-key-name
+```
 
 * Prompts for a password to encrypt the secret key.
 * Stores the key in `key_store.json`.
 
 ## Example:
-```soundness-cli import-phrase --phrase "your-phrase" --name testkey```
+```
+soundness-cli import-phrase --phrase "your-phrase" --name testkey
+```
 
 # Step 3: Play a Game and Send Your Proof
 
 After winning a game (e.g., 8 Queens), submit your proof to the testnet.
 
-```soundness-cli send --proof-file <proof-blob-id> --game <game-name> --key-name your-key-name --proving-system ligetron --payload '<json-payload>'```
+```
+soundness-cli send --proof-file <proof-blob-id> --game <game-name> --key-name your-key-name --proving-system ligetron --payload '<json-payload>'
+```
 
 **Command Breakdown:**
 
@@ -113,9 +119,12 @@ After winning a game (e.g., 8 Queens), submit your proof to the testnet.
 
 Local Files:
 
-```soundness-cli send --proof-file path/to/proof.proof --elf-file path/to/program.elf --key-name testkey --proving-system ligetron```
+```
+soundness-cli send --proof-file path/to/proof.proof --elf-file path/to/program.elf --key-name testkey --proving-system ligetron
+```
 
 Mixed:
 
-```soundness-cli send --proof-file path/to/proof.proof --elf-file <walrus-blob-id> --key-name testkey --proving-system ligetron```
+```
+soundness-cli send --proof-file path/to/proof.proof --elf-file <walrus-blob-id> --key-name testkey --proving-system ligetron```
 ```
