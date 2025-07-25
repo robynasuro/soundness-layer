@@ -34,7 +34,7 @@ cargo --version
 2. Clone the repository:
 ```
 git clone https://github.com/robynasuro/soundness-layer.git
-cd soundess-layer/soundness-cli
+cd /soundess-layer/soundness-cli
 ```
 
 3. Build and install the CLI:
