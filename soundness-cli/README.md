@@ -16,19 +16,25 @@ Prerequisites
 **Git**: For cloning the repository.
 
 # Steps
-1. Clone the repository:
+1. **Install Rust** (if not already installed):
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+2. Clone the repository:
 ```
 git clone https://github.com/robynasuro/soundness-layer.git
 cd soundness-layer
 ```
 
-2. Build and install the CLI:
+3. Build and install the CLI:
 ```
 cargo build --release
 cargo install --path .
 ```
 
-3. Verify installation:
+4. Verify installation:
 ```
 soundness-cli --help
 ```
