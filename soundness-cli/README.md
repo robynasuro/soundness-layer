@@ -1,110 +1,89 @@
-# Soundness CLI
+# Soundness CLI (robynasuro Fork)
+A command-line interface (CLI) tool for interacting with the Soundness Layer testnet, a platform for submitting zero-knowledge proofs for games like 8 Queens. This fork adds support for importing 24-word BIP-39 mnemonic phrases, fixes key store overwrite issues, and improves logging.
 
-A command-line interface tool for interacting with Soundness Layer testnet.
+## Features
+**Generate Key Pair**: Create an Ed25519 key pair with a 24-word BIP-39 mnemonic phrase.
+**Import Mnemonic Phrase**: Import a 24-word BIP-39 mnemonic to create a key pair (new in this fork).
+**List Keys**: Display all stored key pairs with their public keys.
+**Send Proof**: Submit zero-knowledge proofs to the testnet server using Ligetron, SP1, or RISC0 proving systems.
+**Secure Key Storage**: Store encrypted secret keys in key_store.json with password protection.
+**Improved Logging**: Enhanced debug logs for key store operations (new in this fork).
 
-## Installation
+### Installation
+Prerequisites
+**Rust**: Install the Rust toolchain via rustup.rs (stable, latest recommended).
+**Cargo**: Included with Rust.
+**Git**: For cloning the repository.
 
-**Prerequisite:** Ensure you have the [Rust toolchain](https://rustup.rs/) installed.
-
-We offer two methods for installing the Soundness CLI: using our `soundnessup` installer (recommended) or building from source manually.
-
-
-### Recommended: Quick Install via `soundnessup`
-
-The `soundnessup` tool manages your Soundness CLI installation and makes updates easy.
-
-**1. Run the installer script:**
-This command downloads and runs the `soundnessup` installer.
-
-```bash
-curl -sSL https://raw.githubusercontent.com/soundnesslabs/soundness-layer/main/soundnessup/install | bash
+# Steps
+1. Clone the repository:
+```
+git clone https://github.com/robynasuro/soundness-layer.git
+cd soundness-layer
 ```
 
-**2. Update your shell environment:**
-After installation, you need to update your current shell's PATH to recognize the `soundnessup` command. Either restart your terminal or run one of the following commands:
-```bash
-# For Bash:
-source ~/.bashrc
-
-# For Zsh:
-source ~/.zshenv
+2. Build and install the CLI:
 ```
-
-**3. Install the CLI:**
-Now, use `soundnessup` to install the Soundness CLI:
-
-```bash
-soundnessup install
-```
-
-You can later update the CLI to the latest version by running:
-
-```bash
-soundnessup update
-```
-
-### Docker Installation
-
-You can also build and run the CLI using Docker:
-
-```bash
-# Build the Docker image
-docker compose build
-
-# Run the CLI (replace [command] with any soundness-cli command)
-docker compose run --rm soundness-cli [command]
-
-# Example: Generate a new key pair
-docker compos
-
-### Manual Installation (from Source)
-
-If you prefer to install from source, you can use Cargo.
-
-**Build and install:**
-Navigate to the `soundness-cli` directory and run:
-
-```bash
+cargo build --release
 cargo install --path .
 ```
 
-curl -sSL https://raw.githubusercontent.com/soundnesslabs/soundness-layer/main/soundnessup/install | bash
+3. Verify installation:
+```
+soundness-cli --help
+```
 
-## Testnet Instructions
+# Testnet Instructions
+To use this CLI with the Soundness Layer testnet , follow these steps to set up and play ZK games.
 
-Welcome to the Soundness Layer Testnet! Follow these steps to get started with playing ZK games and verifying proofs on-chain.
-
-### Step 1: Get Access
+## Step 1: Get Access
 
 To join the testnet, you'll need either the `Onboarded` role from our Discord or a special invite code.
 
 1.  **Join our Discord:** Hop into the [Soundness Labs Discord](https://discord.gg/SoundnessLabs) and get the `Onboarded` role to participate.
 2.  **Follow us on X:** Keep an eye on our [X account](https://x.com/SoundnessLabs). We regularly post invite codes for our community.
 
-### Step 2: Prepare Your Key
+## Step 2: Prepare Your Key
+1.  **If you have the `Onboarded role`**: Use your existing key from onboarding. Skip to Step 3.
+2.  **If you have an invite code**: Generate or import a key pair.
 
-Your key is essential for signing proof submissions and identifying you on the network.
-
-**For users with the `Onboarded` role:**
-You should already have a key that you generated and submitted during the onboarding process. Make sure you have it ready. You do not need to generate a new one.
-
-**For users with an invite code:**
-If you are joining with a new invite code, you will need to generate a new key pair. Run the following command, replacing `your-key-name` with a name of your choice:
-
-```bash
+# Generate a Key Pair
+```
 soundness-cli generate-key --name your-key-name
 ```
-**Important:** A mnemonic phrase will be displayed. **Save it in a safe place!** This is the only way to recover your key if it's lost.
 
-### Step 3: Play a Game and Send Your Proof
+* Outputs a 24-word mnemonic phrase (save securely offline).
+* Prompts for a password to encrypt the secret key.
+* Stores the key in `key_store.json`.
 
-Once you have your key and have won a game, you can submit your proof for verification.
-
-Use the `send` command with the following format:
-
-```bash
-soundness-cli send --proof-file <proof-blob-id> --game <game-name> --key-name <your-key-name> --proving-system ligetron --payload '<json-payload>'
+## Example:
 ```
+soundness-cli generate-key --name testkey
+```
+
+## Output:
+```
+✅ Generated new key pair 'testkey'
+🔑 Public key: YXbQJjrbhaCxhbSjiVytAeclQ5o3I2KugOkl4s5i8pg=
+```
+
+## Import a Mnemonic Phrase
+
+If you have a 24-word BIP-39 mnemonic, import it:
+
+```soundness-cli import-phrase --phrase "your-phrase" --name your-key-name```
+
+* Prompts for a password to encrypt the secret key.
+* Stores the key in `key_store.json`.
+
+## Example:
+```soundness-cli import-phrase --phrase "your-phrase" --name testkey```
+
+# Step 3: Play a Game and Send Your Proof
+
+After winning a game (e.g., 8 Queens), submit your proof to the testnet.
+
+```soundness-cli send --proof-file <proof-blob-id> --game <game-name> --key-name your-key-name --proving-system ligetron --payload '<json-payload>'```
 
 **Command Breakdown:**
 
@@ -114,83 +93,13 @@ soundness-cli send --proof-file <proof-blob-id> --game <game-name> --key-name <y
 * `--proving-system` (`-s`): The ZK proving system. For our current testnet games, this is `ligetron`.
 * `--payload` (`-d`): A JSON string with the specific inputs required to verify your Ligetron proof.
 
-Get ready to play, prove, and verify on the Soundness Layer!
+## Alternative: Send Proofs with Local Files or Mixed Inputs
 
-## Usage
+Local Files:
 
-### Generating a Key Pair
+```soundness-cli send --proof-file path/to/proof.proof --elf-file path/to/program.elf --key-name testkey --proving-system ligetron```
 
-To generate a new key pair for signing requests:
+Mixed:
 
-```bash
-soundness-cli generate-key --name my-key
+```soundness-cli send --proof-file path/to/proof.proof --elf-file <walrus-blob-id> --key-name testkey --proving-system ligetron```
 ```
-
-This will:
-
-1. Generate a new Ed25519 key pair
-2. Store the key pair securely in a local `key_store.json` file
-3. Display the public key in base64 format
-
-The public key will be displayed in the format:
-
-```bash
-✅ Generated new key pair 'my-key'
-🔑 Public key: <base64-encoded-public-key>
-```
-
-### Listing Key Pairs
-
-To view all stored key pairs:
-
-```bash
-soundness-cli list-keys
-```
-
-This will display all available key pairs and their associated public keys.
-
-### Sending Proofs
-
-The CLI supports two ways to send proofs to the server:
-
-#### 1. Using Local Files
-
-To send a proof and ELF Program file using local file paths:
-
-```bash
-soundness-cli send --proof-file path/to/proof.proof --elf-file path/to/program.elf --key-name my-key
-```
-
-#### 2. Using Files Stored as Walrus Blob IDs
-
-To send a proof and ELF Program file using Walrus Blob IDs (when files are already stored in Walrus):
-
-```bash
-soundness-cli send --proof-file <proof-walrus-blob-id> --elf-file <elf-program-walrus-blob-id> --key-name my-key
-```
-
-The CLI automatically detects whether the input is a file path or a Walrus Blob ID.
-
-#### Mixed Usage
-
-You can also mix file paths and Walrus Blob IDs:
-
-```bash
-# Proof from file, ELF from Walrus storage
-soundness-cli send --proof-file path/to/proof.proof --elf-file <walrus-blob-id> --key-name my-key
-
-# Proof from Walrus storage, ELF from file  
-soundness-cli send --proof-file <walrus-blob-id> --elf-file path/to/program.elf --key-name my-key
-```
-
-#### Proving Systems
-
-You can specify the proving system to use:
-
-```bash
-soundness-cli send --proof-file <path-or-blob-id> --elf-file <path-or-blob-id> --key-name my-key --proving-system <sp1||ligetron||risc0>
-```
-
-Supported proving systems: `sp1`, `ligetron`, `risc0`.
-
-The request will be signed using the specified key pair.
