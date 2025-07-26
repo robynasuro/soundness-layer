@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
@@ -24,7 +25,7 @@ use std::time::Duration;
 const SALT_LENGTH: usize = 32;
 const NONCE_LENGTH: usize = 12;
 const KEY_LENGTH: usize = 32;
-const ITERATIONS: u32 = 100_000;   
+const ITERATIONS: u32 = 100_000;
 
 static PASSWORD_CACHE: Lazy<Mutex<Option<(String, String)>>> = Lazy::new(|| Mutex::new(None));
 
@@ -46,24 +47,22 @@ enum Commands {
     },
     ListKeys,
     Send {
-        #[arg(short = 'p', long)]  
+        #[arg(short = 'p', long)]
         proof_file: PathBuf,
-        #[arg(short = 'l', long)]  
+        #[arg(short = 'l', long)]
         elf_file: Option<PathBuf>,
-        #[arg(short = 'k', long)]  
+        #[arg(short = 'k', long)]
         key_name: String,
-        #[arg(short = 's', long)]  
+        #[arg(short = 's', long)]
         proving_system: ProvingSystem,
-        #[arg(short = 'd', long)]  
+        #[arg(short = 'd', long)]
         payload: Option<serde_json::Value>,
         #[arg(short = 'g', long, value_parser = clap::value_parser!(Game))]
         game: Option<Game>,
     },
     ImportPhrase {
         #[arg(short, long)]
-        phrase: String,
-        #[arg(short, long)]
-        name: String,
+        phrase: Option<String>,
     },
 }
 
@@ -95,7 +94,7 @@ impl FromStr for Game {
     }
 }
 
-impl std::fmt::Display for Game {  
+impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Game::EightQueens => write!(f, "8queens"),
@@ -177,7 +176,7 @@ fn create_progress_bar(message: &str) -> ProgressBar {
 
 fn load_key_store() -> Result<KeyStore, String> {
     let key_store_path = PathBuf::from("key_store.json");
-    if key_store_path.exists() {   
+    if key_store_path.exists() {
         let contents = fs::read_to_string(&key_store_path)
             .map_err(|e| format!("Failed to read key store: {}", e))?;
         let key_store: KeyStore = serde_json::from_str(&contents)
@@ -206,14 +205,12 @@ fn generate_key_pair(name: &str) -> Result<(), String> {
         return Err(format!("Key pair with name \"{}\" already exists", name));
     }
 
-    // Generate a new key pair
     let mut rng = OsRng;
     let signing_key = SigningKey::generate(&mut rng);
     let verifying_key = signing_key.verifying_key();
     let public_key_bytes = verifying_key.to_bytes();
     let public_key_string = BASE64.encode(&public_key_bytes);
 
-    // Generate mnemonic from secret key
     let secret_key_bytes = signing_key.to_bytes();
     let mnemonic = bip39::Mnemonic::from_entropy(&secret_key_bytes)
         .map_err(|e| format!("Failed to generate mnemonic: {}", e))?;
@@ -224,7 +221,6 @@ fn generate_key_pair(name: &str) -> Result<(), String> {
     println!("⚠️ WARNING: This is the only time you will see this mnemonic!");
     println!("⚠️ WARNING: You will need it to recover your secret key if the key store is lost!");
 
-    // Get password for secret key encryption
     let password = prompt_password("Enter password for secret key: ")
         .map_err(|e| format!("Failed to read password: {}", e))?;
     let confirm_password = prompt_password("Confirm password: ")
@@ -234,11 +230,9 @@ fn generate_key_pair(name: &str) -> Result<(), String> {
         return Err("Passwords do not match".to_string());
     }
 
-    // Encrypt the secret key
     let encrypted_secret = encrypt_secret_key(&secret_key_bytes, &password)
         .map_err(|e| format!("Encryption failed: {}", e))?;
 
-    // Save the key pair
     key_store.keys.insert(
         name.to_string(),
         KeyPair {
@@ -248,7 +242,7 @@ fn generate_key_pair(name: &str) -> Result<(), String> {
         },
     );
 
-    save_key_store(&key_store).map_err(|e| format!("Failed to save key store: {}", e))?;   
+    save_key_store(&key_store).map_err(|e| format!("Failed to save key store: {}", e))?;
     println!("\n✅ Generated new key pair \"{}\"", name);
     println!("🔑 Public key: {}", public_key_string);
     Ok(())
@@ -261,7 +255,6 @@ fn import_phrase(phrase: &str, name: &str) -> Result<(), String> {
         return Err(format!("Key pair with name \"{}\" already exists", name));
     }
 
-    // Validasi dan parse mnemonic
     let mnemonic = bip39::Mnemonic::from_str(phrase)
         .map_err(|e| format!("Invalid seed phrase: {}", e))?;
     let entropy = mnemonic.to_entropy();
@@ -269,7 +262,6 @@ fn import_phrase(phrase: &str, name: &str) -> Result<(), String> {
         return Err("Invalid entropy length for mnemonic (expected 32 bytes)".to_string());
     }
 
-    // Derive secret key dari entropy
     let secret_key_bytes: [u8; 32] = entropy[..32]
         .try_into()
         .map_err(|_| "Invalid secret key length".to_string())?;
@@ -278,7 +270,6 @@ fn import_phrase(phrase: &str, name: &str) -> Result<(), String> {
     let public_key_bytes = verifying_key.to_bytes();
     let public_key_string = BASE64.encode(&public_key_bytes);
 
-    // Minta password
     println!("\n📝 Importing key pair \"{}\"", name);
     let password = prompt_password("Enter password for secret key: ")
         .map_err(|e| format!("Failed to read password: {}", e))?;
@@ -289,11 +280,9 @@ fn import_phrase(phrase: &str, name: &str) -> Result<(), String> {
         return Err("Passwords do not match".to_string());
     }
 
-    // Enkripsi secret key
     let encrypted_secret = encrypt_secret_key(&secret_key_bytes, &password)
         .map_err(|e| format!("Encryption failed: {}", e))?;
 
-    // Simpan key pair
     key_store.keys.insert(
         name.to_string(),
         KeyPair {
@@ -309,10 +298,58 @@ fn import_phrase(phrase: &str, name: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn prompt_menu() -> Result<(), String> {
+    println!("\n🔐 Key Management Setup");
+    print!("Enter key name (e.g., mykey): ");
+    io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
+
+    let mut name = String::new();
+    io::stdin()
+        .read_line(&mut name)
+        .map_err(|e| format!("Failed to read key name: {}", e))?;
+    let name = name.trim();
+
+    if name.is_empty() {
+        return Err("Key name cannot be empty".to_string());
+    }
+
+    let key_store = load_key_store().map_err(|e| format!("Failed to load key store: {}", e))?;
+    if key_store.keys.contains_key(name) {
+        return Err(format!("Key pair with name \"{}\" already exists", name));
+    }
+
+    println!("\n🔐 Key Management Menu for \"{}\":", name);
+    println!("1. Import a 24-word BIP-39 mnemonic phrase");
+    println!("2. Generate a new key pair");
+    print!("Enter choice (1 or 2): ");
+    io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
+
+    let mut choice = String::new();
+    io::stdin()
+        .read_line(&mut choice)
+        .map_err(|e| format!("Failed to read input: {}", e))?;
+    let choice = choice.trim();
+
+    match choice {
+        "1" => {
+            print!("\nEnter your 24-word BIP-39 mnemonic phrase: ");
+            io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
+            let mut phrase = String::new();
+            io::stdin()
+                .read_line(&mut phrase)
+                .map_err(|e| format!("Failed to read mnemonic phrase: {}", e))?;
+            let phrase = phrase.trim();
+            import_phrase(phrase, name)
+        }
+        "2" => generate_key_pair(name),
+        _ => Err("Invalid choice. Please enter 1 or 2.".to_string()),
+    }
+}
+
 fn list_keys() -> Result<(), String> {
     let key_store = load_key_store().map_err(|e| format!("Failed to load key store: {}", e))?;
 
-    if key_store.keys.is_empty() { 
+    if key_store.keys.is_empty() {
         println!("No key pairs found. Generate one with \"generate-key\" command.");
         return Ok(());
     }
@@ -343,12 +380,10 @@ fn sign_payload(payload: &[u8], key_name: &str) -> Result<Vec<u8>, String> {
         .as_ref()
         .ok_or_else(|| format!("Secret key not found for \"{}\"", key_name))?;
 
-    // Create a new scope for the password guard to ensure it's dropped properly
     let password = {
         let mut password_guard = PASSWORD_CACHE.lock().unwrap();
 
         if let Some((stored_password, stored_hash)) = password_guard.as_ref() {
-            // Check if key store has changed
             if stored_hash != &key_store_hash {
                 *password_guard = None;
                 drop(password_guard);
@@ -356,22 +391,18 @@ fn sign_payload(payload: &[u8], key_name: &str) -> Result<Vec<u8>, String> {
             }
             stored_password.clone()
         } else {
-            // If no password is stored, prompt for it
             let new_password = prompt_password("Enter password to decrypt the secret key: ")
                 .map_err(|e| format!("Failed to read password: {}", e))?;
 
-            // Try to decrypt with the password to verify it's correct
             if let Err(e) = decrypt_secret_key(encrypted_secret, &new_password) {
                 return Err(format!("Invalid password: {}", e));
             }
 
-            // Store the password and key store hash
             *password_guard = Some((new_password.clone(), key_store_hash));
             new_password
         }
-    }; // password_guard is dropped here
+    };
 
-    // Only show the progress bar after we have the password
     let pb = create_progress_bar("✍️ Signing payload...");
 
     let secret_key_bytes = decrypt_secret_key(encrypted_secret, &password)
@@ -401,7 +432,7 @@ fn is_blob_id(input: &str) -> bool {
         return false;
     }
     input.len() > 20
-        && input.chars().all(|c| { 
+        && input.chars().all(|c| {
             c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=' || c == '-' || c == '_'
         })
 }
@@ -416,7 +447,7 @@ struct ServerResponse {
     sui_transaction_digest: Option<String>,
     proof_data_blob_id: Option<String>,
     vk_blob_id: Option<String>,
-    suiscan_link: Option<String>,  
+    suiscan_link: Option<String>,
     walruscan_links: Option<Vec<String>>,
 }
 
@@ -525,7 +556,7 @@ async fn main() -> Result<(), String> {
             }
 
             match &elf_input {
-                Some(elf_str) => { 
+                Some(elf_str) => {
                     if elf_is_blob {
                         println!("📁 ELF Program: Detected as Walrus Blob ID: {}", elf_str);
                     } else {
@@ -546,10 +577,10 @@ async fn main() -> Result<(), String> {
                     format!("Failed to read proof file: {}: {}", proof_file.display(), e)
                 })?;
                 let filename = proof_file
-                    .file_name()   
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("unknown")
-                    .to_string();  
+                    .to_string();
                 (Some(BASE64.encode(&content)), None, filename)
             };
 
@@ -614,16 +645,16 @@ async fn main() -> Result<(), String> {
             let canonical_string = if !elf_filename.is_empty() {
                 format!(
                     "proof:{}\nelf:{}\nproof_filename:{}\nelf_filename:{}\nproving_system:{}",
-                    proof_value,   
+                    proof_value,
                     elf_value,
                     proof_filename,
-                    elf_filename,  
+                    elf_filename,
                     format!("{:?}", proving_system).to_lowercase()
                 )
             } else {
                 format!(
                     "proof:{}\nproof_filename:{}\nproving_system:{}",
-                    proof_value,   
+                    proof_value,
                     proof_filename,
                     format!("{:?}", proving_system).to_lowercase()
                 )
@@ -651,7 +682,9 @@ async fn main() -> Result<(), String> {
 
             if response.status().is_success() {
                 println!("\n✅ Successfully sent files to {}", args.endpoint);
-                let response_text = response.text().await
+                let response_text = response
+                    .text()
+                    .await
                     .map_err(|e| format!("Failed to read response: {}", e))?;
 
                 match serde_json::from_str::<ServerResponse>(&response_text) {
@@ -665,13 +698,36 @@ async fn main() -> Result<(), String> {
                 }
             } else {
                 println!("\n❌ Error: Server returned status {}", response.status());
-                let error_text = response.text().await
+                let error_text = response
+                    .text()
+                    .await
                     .map_err(|e| format!("Failed to read error response: {}", e))?;
                 println!("Error details: {}", error_text);
             }
         }
-        Commands::ImportPhrase { phrase, name } => {
-            import_phrase(&phrase, &name)?;
+        Commands::ImportPhrase { phrase } => {
+            if let Some(phrase) = phrase {
+                print!("Enter key name (e.g., mykey): ");
+                io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
+                let mut name = String::new();
+                io::stdin()
+                    .read_line(&mut name)
+                    .map_err(|e| format!("Failed to read key name: {}", e))?;
+                let name = name.trim();
+
+                if name.is_empty() {
+                    return Err("Key name cannot be empty".to_string());
+                }
+
+                let key_store = load_key_store().map_err(|e| format!("Failed to load key store: {}", e))?;
+                if key_store.keys.contains_key(name) {
+                    return Err(format!("Key pair with name \"{}\" already exists", name));
+                }
+
+                import_phrase(&phrase, &name)?;
+            } else {
+                prompt_menu()?;
+            }
         }
     }
 
