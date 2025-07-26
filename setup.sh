@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Soundness CLI One-Step Setup Script
-# Installs dependencies, Rust, clones the repo, builds the CLI, and runs soundness-cli import-phrase
+# Installs dependencies, Rust, clones the repo, builds the CLI, runs soundness-cli import-phrase,
+# and guides user to the correct directory
 # Designed to work on a fresh VPS (e.g., Ubuntu 22.04/24.04)
 
 set -e  # Exit on error
@@ -65,6 +66,9 @@ soundness-cli import-phrase < /dev/tty
 
 # Clean up key_store.json
 echo "🧹 Cleaning up key_store.json..."
-rm -f soundness-cli/key_store.json
+rm -f key_store.json
 
 echo "🎉 Setup complete! Key pair created, ready to use Soundness CLI."
+echo "📂 To start using Soundness CLI, navigate to the project directory with:"
+echo "cd $HOME/soundness-layer/soundness-cli"
+echo "👉 Copy and paste the above command into your terminal."
