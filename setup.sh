@@ -3,7 +3,7 @@
 # Soundness CLI One-Step Setup Script
 # Installs dependencies, Rust, clones the repo, builds the CLI, runs soundness-cli import-phrase,
 # and guides user to the correct directory
-# Designed to work on a fresh VPS (e.g., Ubuntu 22.04/24.04)
+# Designed to work on a fresh VPS (e.g., Ubuntu 22.04/24.04) or GitHub Codespaces
 
 set -e  # Exit on error
 
@@ -23,7 +23,7 @@ else
     echo "✅ Basic dependencies already installed"
 fi
 
-# Step 2: Install Rust (skip if already installed)
+# Step 2: Install Rust and ensure PATH is set (skip if already installed)
 if ! command -v rustc &> /dev/null || ! command -v cargo &> /dev/null; then
     echo "📦 Installing Rust..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -32,6 +32,11 @@ else
     echo "✅ Rust already installed"
     rustc --version
     cargo --version
+fi
+# Ensure ~/.cargo/bin is in PATH
+if [[ ":$PATH:" != *":$HOME/.cargo/bin:"* ]]; then
+    echo "📝 Adding ~/.cargo/bin to PATH..."
+    export PATH="$HOME/.cargo/bin:$PATH"
 fi
 
 # Step 3: Clone the repository (skip if already in soundness-layer)
@@ -56,7 +61,10 @@ if command -v soundness-cli &> /dev/null; then
     echo "✅ Soundness CLI installed successfully"
     soundness-cli --version
 else
-    echo "❌ Failed to install Soundness CLI"
+    echo "❌ Failed to install Soundness CLI. Ensure ~/.cargo/bin is in your PATH."
+    echo "👉 Run the following commands to fix PATH:"
+    echo "echo 'export PATH=\"\$HOME/.cargo/bin:\$PATH\"' >> ~/.bashrc"
+    echo "source ~/.bashrc"
     exit 1
 fi
 
@@ -64,11 +72,7 @@ fi
 echo "🔐 Running soundness-cli import-phrase..."
 soundness-cli import-phrase < /dev/tty
 
-# Clean up key_store.json
-echo "🧹 Cleaning up key_store.json..."
-rm -f key_store.json
-
 echo "🎉 Setup complete! Key pair created, ready to use Soundness CLI."
-echo "📂 To start using Soundness CLI, navigate to the project directory with:"
-echo "cd $HOME/soundness-layer/soundness-cli"
-echo "👉 Copy and paste the above command into your terminal."
+echo "📂 You are now in the project directory: $(pwd)"
+echo "🔑 Your key pair is stored in key_store.json. Back it up securely!"
+echo "👉 To use Soundness CLI, run commands like: soundness-cli --help"
