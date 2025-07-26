@@ -299,23 +299,29 @@ fn import_phrase(phrase: &str, name: &str) -> Result<(), String> {
 }
 
 fn prompt_menu() -> Result<(), String> {
-    println!("\n🔐 Key Management Setup");
-    print!("Enter key name (e.g., mykey): ");
-    io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
-
     let mut name = String::new();
-    io::stdin()
-        .read_line(&mut name)
-        .map_err(|e| format!("Failed to read key name: {}", e))?;
-    let name = name.trim();
+    loop {
+        println!("\n🔐 Key Management Setup");
+        print!("Enter key name (e.g., mykey): ");
+        io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
 
-    if name.is_empty() {
-        return Err("Key name cannot be empty".to_string());
-    }
+        name.clear();
+        io::stdin()
+            .read_line(&mut name)
+            .map_err(|e| format!("Failed to read key name: {}", e))?;
+        name = name.trim().to_string();
 
-    let key_store = load_key_store().map_err(|e| format!("Failed to load key store: {}", e))?;
-    if key_store.keys.contains_key(name) {
-        return Err(format!("Key pair with name \"{}\" already exists", name));
+        if name.is_empty() {
+            eprintln!("Error: Key name cannot be empty");
+            continue;
+        }
+
+        let key_store = load_key_store().map_err(|e| format!("Failed to load key store: {}", e))?;
+        if key_store.keys.contains_key(&name) {
+            eprintln!("Error: Key pair with name \"{}\" already exists", name);
+            continue;
+        }
+        break;
     }
 
     println!("\n🔐 Key Management Menu for \"{}\":", name);
@@ -339,9 +345,9 @@ fn prompt_menu() -> Result<(), String> {
                 .read_line(&mut phrase)
                 .map_err(|e| format!("Failed to read mnemonic phrase: {}", e))?;
             let phrase = phrase.trim();
-            import_phrase(phrase, name)
+            import_phrase(phrase, &name)
         }
-        "2" => generate_key_pair(name),
+        "2" => generate_key_pair(&name),
         _ => Err("Invalid choice. Please enter 1 or 2.".to_string()),
     }
 }
@@ -707,21 +713,28 @@ async fn main() -> Result<(), String> {
         }
         Commands::ImportPhrase { phrase } => {
             if let Some(phrase) = phrase {
-                print!("Enter key name (e.g., mykey): ");
-                io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
                 let mut name = String::new();
-                io::stdin()
-                    .read_line(&mut name)
-                    .map_err(|e| format!("Failed to read key name: {}", e))?;
-                let name = name.trim();
+                loop {
+                    print!("Enter key name (e.g., mykey): ");
+                    io::stdout().flush().map_err(|e| format!("Failed to flush stdout: {}", e))?;
 
-                if name.is_empty() {
-                    return Err("Key name cannot be empty".to_string());
-                }
+                    name.clear();
+                    io::stdin()
+                        .read_line(&mut name)
+                        .map_err(|e| format!("Failed to read key name: {}", e))?;
+                    name = name.trim().to_string();
 
-                let key_store = load_key_store().map_err(|e| format!("Failed to load key store: {}", e))?;
-                if key_store.keys.contains_key(name) {
-                    return Err(format!("Key pair with name \"{}\" already exists", name));
+                    if name.is_empty() {
+                        eprintln!("Error: Key name cannot be empty");
+                        continue;
+                    }
+
+                    let key_store = load_key_store().map_err(|e| format!("Failed to load key store: {}", e))?;
+                    if key_store.keys.contains_key(&name) {
+                        eprintln!("Error: Key pair with name \"{}\" already exists", name);
+                        continue;
+                    }
+                    break;
                 }
 
                 import_phrase(&phrase, &name)?;
