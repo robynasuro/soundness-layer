@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Soundness CLI One-Step Setup Script
-# Installs dependencies, Rust, clones the repo, builds the CLI, runs soundness-cli import-phrase,
-# and guides user to the correct directory and PATH setup
+# Installs dependencies, Rust, clones the repo, builds the CLI, and guides user to import key pair
 # Designed to work on a fresh VPS (e.g., Ubuntu 22.04/24.04) or GitHub Codespaces
 
 set -e  # Exit on error
@@ -41,7 +40,7 @@ fi
 
 # Step 3: Clone the repository (skip if already in soundness-layer)
 BASE_DIR=$(pwd)
-if [ ! -d ".git" ] || !-г git remote -v | grep -q "robynasuro/soundness-layer"; then
+if [ ! -d ".git" ] || ! git remote -v | grep -q "robynasuro/soundness-layer"; then
     echo "📂 Cloning robynasuro/soundness-layer repository..."
     rm -rf soundness-layer  # Clean up any existing directory
     git clone https://github.com/robynasuro/soundness-layer.git
@@ -69,15 +68,12 @@ else
     exit 1
 fi
 
-# Step 6: Run soundness-cli import-phrase with redirected stdin
-echo "🔐 Running soundness-cli import-phrase..."
-soundness-cli import-phrase < /dev/tty
-
-echo "🎉 Setup complete! Key pair created, ready to use Soundness CLI."
+echo "🎉 Setup complete! Soundness CLI is ready to use."
 echo "📂 To start using Soundness CLI, navigate to the project directory:"
 echo "cd $BASE_DIR/soundness-layer/soundness-cli"
-echo "🔑 Your key pair is stored in key_store.json. Back it up securely!"
 echo "⚠️ Important: Add Soundness CLI to your PATH to run it from any directory:"
 echo "echo 'export PATH=\"\$HOME/.cargo/bin:\$PATH\"' >> ~/.bashrc"
 echo "source ~/.bashrc"
+echo "🔐 To import your key pair, run:"
+echo "soundness-cli import-phrase"
 echo "👉 Then, you can run commands like: soundness-cli --help"
